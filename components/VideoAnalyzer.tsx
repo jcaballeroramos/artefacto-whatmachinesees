@@ -4,7 +4,6 @@ import { extractFramesFromVideo } from '../utils/fileUtils';
 import Loader from './Loader';
 import AnalysisDisplay from './AnalysisDisplay';
 import ChatInterface from './ChatInterface';
-import CriticalReflection from './CriticalReflection';
 import { Chat } from '@google/genai';
 
 interface ChatMessage {
@@ -153,8 +152,6 @@ const VideoAnalyzer: React.FC = () => {
                         {error && <p className="text-red-600">Error: {error}</p>}
                         
                         {analysis && <AnalysisDisplay text={analysis} />}
-
-                        {analysis && !isLoading && <CriticalReflection />}
 
                         {events.length > 0 && !isLoading && (
                             <div className="mt-6">

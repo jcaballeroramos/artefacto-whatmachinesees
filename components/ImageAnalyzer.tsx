@@ -4,7 +4,6 @@ import { fileToBase64 } from '../utils/fileUtils';
 import Loader from './Loader';
 import AnalysisDisplay from './AnalysisDisplay';
 import ChatInterface from './ChatInterface';
-import CriticalReflection from './CriticalReflection';
 import { Chat } from '@google/genai';
 
 interface ChatMessage {
@@ -133,7 +132,6 @@ const ImageAnalyzer: React.FC = () => {
             {isLoading && <Loader />}
             {error && <p className="text-red-600">Error: {error}</p>}
             <AnalysisDisplay text={analysis} />
-            {analysis && !isLoading && <CriticalReflection />}
             {!isLoading && !analysis && !error && (
               <p className="text-gray-400 italic pt-2">Analysis will appear here once you upload an image and click analyze.</p>
             )}

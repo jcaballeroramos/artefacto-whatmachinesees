@@ -3,11 +3,17 @@ import Header from './components/Header';
 import ImageAnalyzer from './components/ImageAnalyzer';
 import VideoAnalyzer from './components/VideoAnalyzer';
 import TabButton from './components/TabButton';
+import Auth from './components/Auth';
 
 type Tab = 'image' | 'video';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('image');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  if (!isAuthenticated) {
+    return <Auth onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans">
