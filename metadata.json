@@ -1,0 +1,5 @@
+{
+  "name": "What Does a Machine See?",
+  "description": "An interactive workshop tool to explore how AI interprets images, revealing its capabilities, blind spots, and inherent biases.",
+  "requestFramePermissions": []
+}
