@@ -18,52 +18,76 @@ const formatText = (text: string): string => {
       inList = false;
     }
   };
+  
+  const processLineContent = (content: string) => {
+    // Process bolding and other inline formatting
+    return content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
+  };
 
   lines.forEach(line => {
-    // Trim the line to handle potential leading spaces
     const trimmedLine = line.trim();
 
-    // Unordered list
-    if (trimmedLine.startsWith('* ')) {
-      if (!inList || listType !== 'ul') {
+    // Heuristic for main section headers based on prompts (e.g., **1. Title**)
+    if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
         closeList();
-        html += '<ul class="list-disc list-inside space-y-1 my-2 pl-4">';
-        inList = true;
-        listType = 'ul';
-      }
-      html += `<li>${trimmedLine.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`;
-      return;
-    }
-    
-    // Ordered list
-    if (trimmedLine.match(/^\d+\.\s/)) {
-        if (!inList || listType !== 'ol') {
-            closeList();
-            html += '<ol class="list-decimal list-inside space-y-1 my-2 pl-4">';
-            inList = true;
-            listType = 'ol';
+        const content = trimmedLine.substring(2, trimmedLine.length - 2);
+        if (content.match(/^\d+\./)) {
+             html += `<h3 class="text-lg font-bold text-gray-900 mt-8 mb-4 pb-2 border-b border-gray-200">${processLineContent(content)}</h3>`;
+        } else {
+             html += `<h4 class="text-md font-semibold text-gray-800 mt-6 mb-2">${processLineContent(content)}</h4>`;
         }
-        html += `<li>${trimmedLine.replace(/^\d+\.\s/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`;
         return;
     }
 
-    // If we encounter a non-list item, close the current list
+    // Unordered list items
+    if (trimmedLine.startsWith('* ')) {
+      if (!inList || listType !== 'ul') {
+        closeList();
+        html += '<ul class="list-disc space-y-2 my-4 pl-6">';
+        inList = true;
+        listType = 'ul';
+      }
+      // Handle nested descriptions within a list item, like "* Title: description"
+      const content = trimmedLine.substring(2);
+      const parts = content.split(':');
+      // A heuristic to bold the title part of a list item, e.g., "* Material signature: ..."
+      if (parts.length > 1 && parts[0].length < 50) { // check length to avoid mis-formatting long sentences with colons
+          html += `<li class="pl-1"><strong class="font-semibold text-gray-800">${processLineContent(parts[0])}:</strong> ${processLineContent(parts.slice(1).join(':'))}</li>`;
+      } else {
+          html += `<li class="pl-1">${processLineContent(content)}</li>`;
+      }
+      return;
+    }
+    
+    // Ordered list items
+    if (trimmedLine.match(/^\d+\.\s/)) {
+        if (!inList || listType !== 'ol') {
+            closeList();
+            html += '<ol class="list-decimal space-y-2 my-4 pl-6">';
+            inList = true;
+            listType = 'ol';
+        }
+        html += `<li class="pl-1">${processLineContent(trimmedLine.replace(/^\d+\.\s/, ''))}</li>`;
+        return;
+    }
+
+    // Current list is ending
     closeList();
 
-    // Headers
+    // Standard markdown headers
     if (trimmedLine.startsWith('### ')) {
-      html += `<h4 class="text-md font-semibold mt-2 mb-1">${trimmedLine.substring(4)}</h4>`;
+      html += `<h4 class="text-md font-semibold mt-6 mb-2">${processLineContent(trimmedLine.substring(4))}</h4>`;
     } else if (trimmedLine.startsWith('## ')) {
-      html += `<h3 class="text-lg font-semibold mt-3 mb-1">${trimmedLine.substring(3)}</h3>`;
+      html += `<h3 class="text-lg font-semibold mt-8 mb-4">${processLineContent(trimmedLine.substring(3))}</h3>`;
     } else if (trimmedLine.startsWith('# ')) {
-      html += `<h2 class="text-xl font-semibold mt-4 mb-2">${trimmedLine.substring(2)}</h2>`;
-    } else if (trimmedLine) { // Only add non-empty lines as paragraphs
-      // Regular paragraph, handle bold
-      html += `<p class="my-2">${trimmedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>`;
+      html += `<h2 class="text-xl font-bold mt-10 mb-5">${processLineContent(trimmedLine.substring(2))}</h2>`;
+    } else if (trimmedLine) { 
+      // Regular paragraph
+      html += `<p class="my-4 leading-relaxed">${processLineContent(trimmedLine)}</p>`;
     }
   });
 
-  // Close any open list at the end of the text
+  // Close any open list at the end
   closeList();
   
   return html;
@@ -77,7 +101,7 @@ const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({ text }) => {
 
   return (
     <div
-      className="text-gray-700 whitespace-normal font-sans text-sm leading-relaxed prose prose-sm max-w-none"
+      className="text-gray-700 whitespace-normal font-sans text-sm"
       dangerouslySetInnerHTML={{ __html: formattedHtml }}
     />
   );
