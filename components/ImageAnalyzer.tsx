@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { analyzeImageAndStartChat, sendMessageToChat } from '../services/geminiService';
+import { analyzeImageAndStartChat, sendMessageToChatStream } from '../services/geminiService';
 import { fileToBase64 } from '../utils/fileUtils';
 import Loader from './Loader';
 import AnalysisDisplay from './AnalysisDisplay';
@@ -71,16 +71,49 @@ const ImageAnalyzer: React.FC = () => {
     setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
     setChatInput('');
     setIsChatLoading(true);
+    
+    // Add a placeholder for the model's streaming response
+    setChatHistory(prev => [...prev, { role: 'model', text: '' }]);
 
     try {
-        const modelResponse = await sendMessageToChat(chatSession, userMessage);
-        setChatHistory(prev => [...prev, { role: 'model', text: modelResponse }]);
+        const stream = await sendMessageToChatStream(chatSession, userMessage);
+        let responseText = '';
+        for await (const chunk of stream) {
+            responseText += chunk.text;
+            // Update the last message (the model's response) in the history
+            setChatHistory(prev => {
+                const newHistory = [...prev];
+                newHistory[newHistory.length - 1] = { role: 'model', text: responseText };
+                return newHistory;
+            });
+        }
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An error occurred.';
-        setChatHistory(prev => [...prev, { role: 'model', text: `Sorry, I encountered an error: ${errorMessage}` }]);
+        setChatHistory(prev => {
+            const newHistory = [...prev];
+            newHistory[newHistory.length - 1] = { role: 'model', text: `Sorry, I encountered an error: ${errorMessage}` };
+            return newHistory;
+        });
     } finally {
         setIsChatLoading(false);
     }
+  };
+
+  const handleExport = () => {
+    if (!analysis) return;
+    const exportData = {
+        analysis,
+    };
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `image-analysis-${selectedFile?.name.split('.').slice(0, -1).join('.') || 'export'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const triggerFileSelect = () => fileInputRef.current?.click();
@@ -127,7 +160,17 @@ const ImageAnalyzer: React.FC = () => {
 
         {/* Right Side: Analysis */}
         <div className="space-y-4 min-h-[20rem]">
-          <h3 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">3. Machine's perspective</h3>
+          <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+            <h3 className="text-xl font-semibold text-gray-800">3. Machine's perspective</h3>
+            {analysis && !isLoading && (
+              <button
+                onClick={handleExport}
+                className="text-sm bg-gray-200 text-gray-800 font-semibold py-1 px-3 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Export Results
+              </button>
+            )}
+          </div>
           <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg h-full min-h-[28rem] overflow-y-auto">
             {isLoading && <Loader />}
             {error && <p className="text-red-600">Error: {error}</p>}

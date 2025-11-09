@@ -13,11 +13,14 @@ interface ChatInterfaceProps {
   isLoading: boolean;
 }
 
-const formatChatMessage = (text: string) => {
+const formatChatMessage = (text: string): string => {
+  if (!text) return '';
+
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
     .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
-    .replace(/\n/g, '<br />'); // Newlines
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-black rounded px-1 text-xs">$1</code>')
+    .replace(/\n/g, '<br />');
 };
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ history, inputValue, onInputChange, onSendMessage, isLoading }) => {
@@ -26,15 +29,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ history, inputValue, onIn
       <h4 className="text-lg font-semibold text-gray-800 mb-4">Chat about this</h4>
       
       {/* Chat History */}
-      <div className="space-y-4 mb-4">
+      <div className="space-y-4 mb-4 max-h-96 overflow-y-auto pr-2">
         {history.map((msg, index) => (
           <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-md p-3 rounded-lg ${msg.role === 'user' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>
-              <p className="text-sm" dangerouslySetInnerHTML={{ __html: formatChatMessage(msg.text) }} />
+              <div className="text-sm prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatChatMessage(msg.text) }} />
             </div>
           </div>
         ))}
-        {isLoading && (
+        {isLoading && history[history.length - 1]?.role === 'model' && !history[history.length - 1]?.text && (
             <div className="flex justify-start">
                  <div className="max-w-md p-3 rounded-lg bg-gray-200 text-gray-800">
                     <div className="flex items-center space-x-2">

@@ -12,7 +12,7 @@ const CriticalReflection: React.FC = () => {
   return (
     <div className="mt-8 pt-6 border-t-2 border-dashed border-gray-300">
       <h4 className="text-lg font-bold text-gray-900 mb-4 tracking-tight">
-        Critical Reflection Prompts
+        Critical reflection prompts
       </h4>
       <ul className="space-y-3 list-disc list-inside text-gray-700">
         {questions.map((q, index) => (
