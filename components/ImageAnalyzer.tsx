@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { analyzeImageAndStartChat, sendMessageToChatStream } from '../services/geminiService';
 import { fileToBase64 } from '../utils/fileUtils';
@@ -11,7 +12,11 @@ interface ChatMessage {
   text: string;
 }
 
-const ImageAnalyzer: React.FC = () => {
+interface ImageAnalyzerProps {
+    onApiKeyError: () => void;
+}
+
+const ImageAnalyzer: React.FC<ImageAnalyzerProps> = ({ onApiKeyError }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -57,11 +62,17 @@ const ImageAnalyzer: React.FC = () => {
       setAnalysis(result.analysis);
       setChatSession(result.chat);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+       if (errorMessage.includes('Requested entity was not found.')) {
+            setError('Your API key may be invalid or missing permissions. Please select a valid key and try again.');
+            onApiKeyError();
+        } else {
+            setError(errorMessage);
+        }
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFile]);
+  }, [selectedFile, onApiKeyError]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,11 +100,14 @@ const ImageAnalyzer: React.FC = () => {
         }
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An error occurred.';
-        setChatHistory(prev => {
-            const newHistory = [...prev];
-            newHistory[newHistory.length - 1] = { role: 'model', text: `Sorry, I encountered an error: ${errorMessage}` };
-            return newHistory;
-        });
+        const newHistory = [...chatHistory, { role: 'user', text: userMessage }];
+        if (errorMessage.includes('Requested entity was not found.')) {
+            onApiKeyError();
+            newHistory.push({ role: 'model', text: `Sorry, there was an issue with your API key. Please select a new one.` });
+        } else {
+            newHistory.push({ role: 'model', text: `Sorry, I encountered an error: ${errorMessage}` });
+        }
+        setChatHistory(newHistory);
     } finally {
         setIsChatLoading(false);
     }

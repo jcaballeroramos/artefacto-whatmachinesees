@@ -1,7 +1,18 @@
+
 import { GoogleGenAI, Type, Chat } from "@google/genai";
 import { TAXONOMY } from './taxonomy';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+// This function creates a new client instance for each call.
+// This is necessary to ensure the latest API key from the environment is used.
+const getGenAIClient = () => {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        // This error will be caught by the calling components.
+        throw new Error("API key not found. Please select an API key to proceed.");
+    }
+    return new GoogleGenAI({ apiKey });
+};
+
 
 const IMAGE_ANALYSIS_PROMPT = `You are an expert in documentary theory and critical media analysis, applying the frameworks from the 'Documentary in the Age of AI' workshop. Your task is to analyze the provided image through this specific lens, focusing on how credibility now rests on making the process legible.
 
@@ -32,6 +43,7 @@ export interface ImageAnalysisResponse {
 
 export const analyzeImageAndStartChat = async (imageData: { mimeType: string; data: string }): Promise<ImageAnalysisResponse> => {
   try {
+    const ai = getGenAIClient();
     const model = 'gemini-2.5-flash';
     const chat = ai.chats.create({ 
       model,
@@ -188,6 +200,7 @@ interface VideoAnalysisInitialResponse {
 
 export const analyzeVideoAndStartChat = async (frames: { mimeType: string; data: string; timestamp: number }[]): Promise<VideoAnalysisInitialResponse> => {
   try {
+    const ai = getGenAIClient();
     const model = 'gemini-2.5-pro';
 
     const responseSchema = {

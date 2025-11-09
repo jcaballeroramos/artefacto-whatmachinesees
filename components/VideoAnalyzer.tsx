@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { analyzeVideoAndStartChat, sendMessageToChatStream, VideoAnalysisEvent, KeyPerson, TechnicalDescription, TaxonomyClassification } from '../services/geminiService';
 import { extractFramesFromVideo } from '../utils/fileUtils';
@@ -11,7 +12,11 @@ interface ChatMessage {
   text: string;
 }
 
-const VideoAnalyzer: React.FC = () => {
+interface VideoAnalyzerProps {
+    onApiKeyError: () => void;
+}
+
+const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ onApiKeyError }) => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<string | null>(null);
@@ -83,12 +88,17 @@ const VideoAnalyzer: React.FC = () => {
             setTaxonomyClassification(result.taxonomyClassification);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during video processing.';
-            setError(`Failed to analyze video. ${errorMessage}`);
+            if (errorMessage.includes('Requested entity was not found.')) {
+                setError('Your API key may be invalid or missing permissions. Please select a valid key and try again.');
+                onApiKeyError();
+            } else {
+                setError(`Failed to analyze video. ${errorMessage}`);
+            }
         } finally {
             setIsLoading(false);
             setLoadingMessage('');
         }
-    }, [selectedFile]);
+    }, [selectedFile, onApiKeyError]);
 
     const triggerFileSelect = () => fileInputRef.current?.click();
 
@@ -124,11 +134,14 @@ const VideoAnalyzer: React.FC = () => {
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An error occurred.';
-            setChatHistory(prev => {
-                const newHistory = [...prev];
-                newHistory[newHistory.length - 1] = { role: 'model', text: `Sorry, I encountered an error: ${errorMessage}`};
-                return newHistory;
-            });
+            const newHistory = [...chatHistory, { role: 'user', text: userMessage }];
+            if (errorMessage.includes('Requested entity was not found.')) {
+                onApiKeyError();
+                newHistory.push({ role: 'model', text: `Sorry, there was an issue with your API key. Please select a new one.` });
+            } else {
+                newHistory.push({ role: 'model', text: `Sorry, I encountered an error: ${errorMessage}` });
+            }
+            setChatHistory(newHistory);
         } finally {
             setIsChatLoading(false);
         }
