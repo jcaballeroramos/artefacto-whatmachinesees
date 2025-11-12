@@ -33,7 +33,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ history, inputValue, onIn
         {history.map((msg, index) => (
           <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-md p-3 rounded-lg ${msg.role === 'user' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}`}>
-              <div className="text-sm prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formatChatMessage(msg.text) }} />
+              <div className={`text-sm prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert' : ''}`} dangerouslySetInnerHTML={{ __html: formatChatMessage(msg.text) }} />
             </div>
           </div>
         ))}

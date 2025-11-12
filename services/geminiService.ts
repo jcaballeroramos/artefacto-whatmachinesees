@@ -256,16 +256,7 @@ export const analyzeVideoAndStartChat = async (frames: { mimeType: string; data:
         },
         required: ['synopsis', 'suggestedTitle', 'technicalDescription', 'taxonomyClassification', 'analysis', 'events', 'keyPeople'],
       };
-
-    const chat = ai.chats.create({ 
-      model,
-      config: {
-        systemInstruction: "You are an expert in documentary theory and critical media analysis. Continue the conversation, answering the user's follow-up questions about the media they provided, always maintaining this persona.",
-        responseMimeType: "application/json",
-        responseSchema,
-      }
-    });
-
+    
     const durationSeconds = frames[frames.length - 1]?.timestamp || 0;
     const minutes = Math.floor(durationSeconds / 60);
     const seconds = Math.round(durationSeconds % 60);
@@ -286,8 +277,14 @@ export const analyzeVideoAndStartChat = async (frames: { mimeType: string; data:
       { text: VIDEO_ANALYSIS_PROMPT_SUFFIX }
     ];
     
-    const response = await chat.sendMessage({
-      message: parts,
+    // Step 1: Use a one-shot `generateContent` call for the initial structured JSON analysis.
+    const response = await ai.models.generateContent({
+        model,
+        contents: { parts },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema,
+        }
     });
 
     let jsonText = response.text.trim();
@@ -300,6 +297,27 @@ export const analyzeVideoAndStartChat = async (frames: { mimeType: string; data:
     
     const parsedResult = JSON.parse(jsonText);
 
+    // Step 2: Create a new, clean chat session for the follow-up conversation.
+    const history = [
+        {
+            role: 'user' as const,
+            parts: [{ text: `I've provided a video, and you've generated an initial analysis. Now, please answer my follow-up questions about it.` }]
+        },
+        {
+            role: 'model' as const,
+            // Provide the detailed analysis as context for the model's first turn.
+            parts: [{ text: `Of course. Here is the analysis I generated for your reference. I am ready for your questions.\n\n${parsedResult.analysis}` }]
+        }
+    ];
+
+    const chat = ai.chats.create({
+        model,
+        history,
+        config: {
+          systemInstruction: "You are an expert in documentary theory and critical media analysis. You have already provided an initial analysis of a video. Continue the conversation by answering the user's follow-up questions about it, using the initial analysis as context provided in the first turn.",
+        }
+      });
+
     return {
         analysis: parsedResult.analysis,
         events: parsedResult.events,
@@ -308,7 +326,7 @@ export const analyzeVideoAndStartChat = async (frames: { mimeType: string; data:
         suggestedTitle: parsedResult.suggestedTitle,
         technicalDescription: parsedResult.technicalDescription,
         taxonomyClassification: parsedResult.taxonomyClassification,
-        chat,
+        chat, // Return the new, conversational chat session.
     };
 
   } catch (error) {
